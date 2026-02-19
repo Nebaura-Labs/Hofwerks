@@ -1,0 +1,10 @@
+{
+  "name": "@hofwerkz/convex",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "cd ../.. && convex dev",
+    "convex:codegen": "cd ../.. && convex codegen",
+    "convex:deploy": "cd ../.. && convex deploy"
+  }
+}

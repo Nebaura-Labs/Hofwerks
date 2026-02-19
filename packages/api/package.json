@@ -12,7 +12,6 @@
   "scripts": {},
   "dependencies": {
     "@hofwerkz/auth": "workspace:*",
-    "@hofwerkz/db": "workspace:*",
     "@hofwerkz/env": "workspace:*",
     "@orpc/client": "catalog:",
     "@orpc/openapi": "catalog:",

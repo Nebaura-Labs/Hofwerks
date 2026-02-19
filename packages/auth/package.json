@@ -11,13 +11,8 @@
   },
   "scripts": {},
   "dependencies": {
-    "@hofwerkz/db": "workspace:*",
     "@hofwerkz/env": "workspace:*",
-    "@polar-sh/better-auth": "catalog:",
-    "@polar-sh/sdk": "^0.42.2",
-    "better-auth": "catalog:",
-    "dotenv": "catalog:",
-    "zod": "catalog:"
+    "dotenv": "catalog:"
   },
   "devDependencies": {
     "@hofwerkz/config": "workspace:*",

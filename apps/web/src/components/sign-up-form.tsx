@@ -1,20 +1,23 @@
+import { EnvelopeSimple, GoogleLogo, Lock, User } from "@phosphor-icons/react";
 import { useForm } from "@tanstack/react-form";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import z from "zod";
 
 import { authClient } from "@/lib/auth-client";
 
-import Loader from "./loader";
 import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+  FieldSeparator,
+} from "./ui/field";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "./ui/input-group";
 
-export default function SignUpForm({ onSwitchToSignIn }: { onSwitchToSignIn: () => void }) {
-  const navigate = useNavigate({
-    from: "/",
-  });
-  const { isPending } = authClient.useSession();
+export default function SignUpForm() {
+  const navigate = useNavigate({ from: "/signup" });
 
   const form = useForm({
     defaultValues: {
@@ -23,24 +26,23 @@ export default function SignUpForm({ onSwitchToSignIn }: { onSwitchToSignIn: () 
       name: "",
     },
     onSubmit: async ({ value }) => {
-      await authClient.signUp.email(
-        {
+      try {
+        const result = await authClient.signUp.email({
           email: value.email,
           password: value.password,
           name: value.name,
-        },
-        {
-          onSuccess: () => {
-            navigate({
-              to: "/dashboard",
-            });
-            toast.success("Sign up successful");
-          },
-          onError: (error) => {
-            toast.error(error.error.message || error.error.statusText);
-          },
-        },
-      );
+        });
+
+        if (result?.error) {
+          toast.error(result.error.message ?? result.error.statusText ?? "Sign up failed");
+          return;
+        }
+
+        navigate({ to: "/dashboard" });
+        toast.success("Sign up successful");
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Sign up failed");
+      }
     },
     validators: {
       onSubmit: z.object({
@@ -51,112 +53,135 @@ export default function SignUpForm({ onSwitchToSignIn }: { onSwitchToSignIn: () 
     },
   });
 
-  if (isPending) {
-    return <Loader />;
-  }
-
   return (
-    <div className="mx-auto w-full mt-10 max-w-md p-6">
-      <h1 className="mb-6 text-center text-3xl font-bold">Create Account</h1>
-
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          form.handleSubmit();
-        }}
-        className="space-y-4"
-      >
-        <div>
-          <form.Field name="name">
-            {(field) => (
-              <div className="space-y-2">
-                <Label htmlFor={field.name}>Name</Label>
-                <Input
-                  id={field.name}
-                  name={field.name}
-                  value={field.state.value}
-                  onBlur={field.handleBlur}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                />
-                {field.state.meta.errors.map((error) => (
-                  <p key={error?.message} className="text-red-500">
-                    {error?.message}
-                  </p>
-                ))}
-              </div>
-            )}
-          </form.Field>
+    <form
+      className="flex flex-col gap-6"
+      noValidate
+      onSubmit={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        void form.handleSubmit();
+      }}
+    >
+      <FieldGroup>
+        <div className="flex flex-col items-center gap-1 text-center">
+          <h1 className="text-2xl font-bold">Create your account</h1>
         </div>
 
-        <div>
-          <form.Field name="email">
-            {(field) => (
-              <div className="space-y-2">
-                <Label htmlFor={field.name}>Email</Label>
-                <Input
+        <form.Field name="name">
+          {(field) => (
+            <Field>
+              <FieldLabel htmlFor={field.name}>Name</FieldLabel>
+              <InputGroup>
+                <InputGroupAddon>
+                  <User />
+                </InputGroupAddon>
+                <InputGroupInput
                   id={field.name}
                   name={field.name}
+                  onBlur={field.handleBlur}
+                  onChange={(event) => {
+                    field.handleChange(event.target.value);
+                  }}
+                  placeholder="Jonah"
+                  required
+                  type="text"
+                  value={field.state.value}
+                />
+              </InputGroup>
+              {field.state.meta.errors.map((error) => (
+                <p className="text-sm text-rose-400" key={error?.message}>
+                  {error?.message}
+                </p>
+              ))}
+            </Field>
+          )}
+        </form.Field>
+
+        <form.Field name="email">
+          {(field) => (
+            <Field>
+              <FieldLabel htmlFor={field.name}>Email</FieldLabel>
+              <InputGroup>
+                <InputGroupAddon>
+                  <EnvelopeSimple />
+                </InputGroupAddon>
+                <InputGroupInput
+                  id={field.name}
+                  name={field.name}
+                  onBlur={field.handleBlur}
+                  onChange={(event) => {
+                    field.handleChange(event.target.value);
+                  }}
+                  placeholder="m@example.com"
+                  required
                   type="email"
                   value={field.state.value}
-                  onBlur={field.handleBlur}
-                  onChange={(e) => field.handleChange(e.target.value)}
                 />
-                {field.state.meta.errors.map((error) => (
-                  <p key={error?.message} className="text-red-500">
-                    {error?.message}
-                  </p>
-                ))}
-              </div>
-            )}
-          </form.Field>
-        </div>
+              </InputGroup>
+              {field.state.meta.errors.map((error) => (
+                <p className="text-sm text-rose-400" key={error?.message}>
+                  {error?.message}
+                </p>
+              ))}
+            </Field>
+          )}
+        </form.Field>
 
-        <div>
-          <form.Field name="password">
-            {(field) => (
-              <div className="space-y-2">
-                <Label htmlFor={field.name}>Password</Label>
-                <Input
+        <form.Field name="password">
+          {(field) => (
+            <Field>
+              <FieldLabel htmlFor={field.name}>Password</FieldLabel>
+              <InputGroup>
+                <InputGroupAddon>
+                  <Lock />
+                </InputGroupAddon>
+                <InputGroupInput
                   id={field.name}
                   name={field.name}
+                  onBlur={field.handleBlur}
+                  onChange={(event) => {
+                    field.handleChange(event.target.value);
+                  }}
+                  required
                   type="password"
                   value={field.state.value}
-                  onBlur={field.handleBlur}
-                  onChange={(e) => field.handleChange(e.target.value)}
                 />
-                {field.state.meta.errors.map((error) => (
-                  <p key={error?.message} className="text-red-500">
-                    {error?.message}
-                  </p>
-                ))}
-              </div>
-            )}
-          </form.Field>
-        </div>
+              </InputGroup>
+              {field.state.meta.errors.map((error) => (
+                <p className="text-sm text-rose-400" key={error?.message}>
+                  {error?.message}
+                </p>
+              ))}
+            </Field>
+          )}
+        </form.Field>
 
         <form.Subscribe>
           {(state) => (
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={!state.canSubmit || state.isSubmitting}
-            >
-              {state.isSubmitting ? "Submitting..." : "Sign Up"}
-            </Button>
+            <Field>
+              <Button className="w-full" disabled={!state.canSubmit || state.isSubmitting} type="submit">
+                {state.isSubmitting ? "Creating account..." : "Create account"}
+              </Button>
+            </Field>
           )}
         </form.Subscribe>
-      </form>
 
-      <div className="mt-4 text-center">
-        <Button
-          variant="link"
-          onClick={onSwitchToSignIn}
-          className="text-indigo-600 hover:text-indigo-800"
-        >
-          Already have an account? Sign In
-        </Button>
-      </div>
-    </div>
+        <FieldSeparator>Or continue with</FieldSeparator>
+
+        <Field>
+          <Button className="w-full" type="button" variant="outline">
+            <GoogleLogo className="size-4" weight="regular" />
+            Sign up with Google
+          </Button>
+          <FieldDescription className="text-center">
+            Already have an account?{" "}
+            <Link className="underline underline-offset-4" to="/login">
+              Log in
+            </Link>
+          </FieldDescription>
+        </Field>
+      </FieldGroup>
+    </form>
   );
 }

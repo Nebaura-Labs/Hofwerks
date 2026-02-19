@@ -1,72 +1,157 @@
-# hofwerkz
+# Hofwerkz
 
-This project was created with [Better-T-Stack](https://github.com/AmanVarshney01/create-better-t-stack), a modern TypeScript stack that combines React, TanStack Start, Self, ORPC, and more.
+Hofwerkz is a modern BMW datalogging and diagnostics suite focused on enthusiasts and tuners, starting with N55 platforms.
 
-## Features
+This repository contains:
+- A native desktop app (Tauri + Rust + React) for cable-based logging and diagnostics workflows
+- A web app (TanStack Start) for account, dashboard, and log visualization
+- Shared packages for auth, API, env, and data infrastructure
 
-- **TypeScript** - For type safety and improved developer experience
-- **TanStack Start** - SSR framework with TanStack Router
-- **TailwindCSS** - Utility-first CSS for rapid UI development
-- **shadcn/ui** - Reusable UI components
-- **oRPC** - End-to-end type-safe APIs with OpenAPI integration
-- **Drizzle** - TypeScript-first ORM
-- **PostgreSQL** - Database engine
-- **Authentication** - Better-Auth
-- **Biome** - Linting and formatting
-- **Turborepo** - Optimized monorepo build system
+## Product Focus
 
-## Getting Started
+Hofwerkz is designed to replace fragmented tooling with a single workflow:
+- Connect to vehicle via K+DCAN/serial adapter
+- Record and inspect datalogs
+- Read and clear DTCs
+- Export/share logs and analyze data in web UI
 
-First, install the dependencies:
+For full product scope and roadmap, see `PRD.md`.
+
+## Current Capabilities
+
+Available in this repository:
+- Native Tauri app shell with signed-in user flows
+- Native datalogging screen with:
+  - Serial port discovery
+  - Hardware mode + simulator mode
+  - Logging session start/stop
+  - Live log polling from Rust backend
+  - CSV export of recorded samples
+- Native gauges and app mode navigation screens
+- Web dashboard with authentication
+- Web CSV log viewer with parameter selection and interactive charting
+- Convex + Better Auth integration scaffolding
+
+Planned or in progress:
+- DTC read/clear backend is currently mocked in Rust
+- Full BMW-specific protocol/channel coverage is still expanding
+- Cloud log persistence and production analysis pipeline are not complete yet
+
+## Monorepo Structure
+
+```text
+hofwerkz/
+├── apps/
+│   ├── web/                 # Web dashboard (TanStack Start + React)
+│   └── native/              # Desktop app (Tauri + React + Rust)
+├── packages/
+│   ├── api/                 # oRPC procedures + shared API utilities
+│   ├── auth/                # Better Auth + Convex proxy integration
+│   ├── db/                  # Drizzle + Postgres setup
+│   ├── env/                 # Typed environment validation
+│   ├── config/              # Shared TS/Biome config
+│   └── convex/              # Convex workspace task wrapper
+├── convex/                  # Convex backend app + generated files
+├── turbo.json
+└── PRD.md
+```
+
+## Tech Stack
+
+- Runtime/package manager: Bun
+- Monorepo orchestration: Turborepo
+- Native app: Tauri 2 + Rust + React + Vite
+- Web app: TanStack Start + React + Vite
+- Auth: Better Auth + Convex integration
+- API layer: oRPC
+- DB tooling: Drizzle + PostgreSQL
+- Lint/format: Ultracite (Biome)
+
+## Prerequisites
+
+- Bun `>=1.3`
+- Node-compatible build toolchain for Vite
+- Rust toolchain + Cargo (for native app)
+- Tauri dependencies for your OS (macOS in your current setup)
+- Convex account/project configured for backend runtime
+
+## Setup
+
+1. Install dependencies:
 
 ```bash
 bun install
 ```
 
-## Database Setup
+2. Configure environment files (minimum):
+- `apps/web/.env` with at least `CONVEX_SITE_URL`
+- Native/web auth env vars as required by Better Auth + Convex setup
 
-This project uses PostgreSQL with Drizzle ORM.
-
-1. Make sure you have a PostgreSQL database set up.
-2. Update your `apps/web/.env` file with your PostgreSQL connection details.
-
-3. Apply the schema to your database:
+3. Start Convex runtime (recommended during development):
 
 ```bash
-bun run db:push
+bun run convex:dev
 ```
 
-Then, run the development server:
+## Development Commands
+
+Root scripts:
+
+- `bun run dev`  
+  Starts default lightweight dev stack (web + convex tasks via turbo).
+
+- `bun run dev:all`  
+  Starts all workspace `dev` tasks (includes native), with capped turbo concurrency.
+
+- `bun run dev:web`  
+  Starts only web dev task.
+
+- `bun run dev:native`  
+  Starts only native (Tauri) dev task.
+
+- `bun run build`  
+  Runs monorepo builds through turbo.
+
+- `bun run check-types`  
+  Runs type checks through turbo.
+
+- `bun run check`  
+  Runs Ultracite checks.
+
+- `bun run fix`  
+  Runs Ultracite autofixes.
+
+- `bun run clean:native`  
+  Cleans native Rust build artifacts (`cargo clean`) to reclaim disk space.
+
+Convex scripts:
+
+- `bun run convex:dev`
+- `bun run convex:codegen`
+- `bun run convex:deploy`
+
+## Native App Notes
+
+- Rust build artifacts can become large in debug mode (`apps/native/src-tauri/target`).
+- Use `bun run clean:native` when disk usage grows.
+- Native app code:
+  - Frontend: `apps/native/src`
+  - Rust backend commands: `apps/native/src-tauri/src/lib.rs`
+
+## Quality Standards
+
+This repo uses Ultracite and strict project standards (see `AGENTS.md`).
+
+Useful commands:
 
 ```bash
-bun run dev
+bun run check
+bun run fix
 ```
 
-Open [http://localhost:3001](http://localhost:3001) in your browser to see the fullstack application.
+## Roadmap Alignment
 
-## Git Hooks and Formatting
-
-- Format and lint fix: `bun run check`
-
-## Project Structure
-
-```
-hofwerkz/
-├── apps/
-│   └── web/         # Fullstack application (React + TanStack Start)
-├── packages/
-│   ├── api/         # API layer / business logic
-│   ├── auth/        # Authentication configuration & logic
-│   └── db/          # Database schema & queries
-```
-
-## Available Scripts
-
-- `bun run dev`: Start all applications in development mode
-- `bun run build`: Build all applications
-- `bun run check-types`: Check TypeScript types across all apps
-- `bun run db:push`: Push schema changes to database
-- `bun run db:generate`: Generate database client/types
-- `bun run db:migrate`: Run database migrations
-- `bun run db:studio`: Open database studio UI
-- `bun run check`: Run Biome formatting and linting
+High-level roadmap and feature phases are defined in `PRD.md` (v0.1.0, last updated February 17, 2026). The current codebase is in early execution of that plan, with strongest progress in:
+- Native logging workflow foundation
+- Web auth/dashboard experience
+- Shared monorepo platform setup

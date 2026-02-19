@@ -17,17 +17,13 @@
       "cache": false,
       "persistent": true
     },
-    "db:push": {
+    "convex:dev": {
       "cache": false
     },
-    "db:generate": {
+    "convex:codegen": {
       "cache": false
     },
-    "db:migrate": {
-      "cache": false,
-      "persistent": true
-    },
-    "db:studio": {
+    "convex:deploy": {
       "cache": false,
       "persistent": true
     }
