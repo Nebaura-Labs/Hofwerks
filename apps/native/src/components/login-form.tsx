@@ -1,8 +1,8 @@
-import { EnvelopeSimple, GoogleLogo, Lock } from "@phosphor-icons/react"
+import { Eye, EyeSlash, EnvelopeSimple, GoogleLogo, Lock } from "@phosphor-icons/react"
 import { useForm } from "@tanstack/react-form"
-import { Link } from "react-router-dom"
+import { useState } from "react"
 import { toast } from "sonner"
-import z from "zod"
+import { z } from "zod"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -11,23 +11,29 @@ import {
   FieldDescription,
   FieldGroup,
   FieldLabel,
-  FieldSeparator,
 } from "@/components/ui/field"
 import {
   InputGroup,
   InputGroupAddon,
+  InputGroupButton,
   InputGroupInput,
 } from "@/components/ui/input-group"
 
 type LoginFormProps = Omit<React.ComponentProps<"form">, "onSubmit"> & {
   onSubmitCredentials: (values: { email: string; password: string }) => Promise<void>
+  onSwitchToSignUp?: () => void
 }
 
 export function LoginForm({
   className,
   onSubmitCredentials,
+  onSwitchToSignUp,
   ...props
 }: LoginFormProps) {
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false)
+  const normalizeEmail = (value: string): string =>
+    value.trim().toLowerCase().replaceAll(" ", "")
+
   const form = useForm({
     defaultValues: {
       email: "",
@@ -35,15 +41,21 @@ export function LoginForm({
     },
     onSubmit: async ({ value }) => {
       try {
-        await onSubmitCredentials({ email: value.email, password: value.password })
+        await onSubmitCredentials({
+          email: normalizeEmail(value.email),
+          password: value.password,
+        })
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Login failed. Please try again.")
       }
     },
     validators: {
       onSubmit: z.object({
-        email: z.email("Invalid email address"),
-        password: z.string().min(8, "Password must be at least 8 characters"),
+        email: z
+          .string()
+          .min(1, "Email is required")
+          .email("Please enter a valid email address"),
+        password: z.string().trim().min(1, "Password is required"),
       }),
     },
   })
@@ -61,7 +73,7 @@ export function LoginForm({
     >
       <FieldGroup>
         <div className="flex flex-col items-center gap-1 text-center">
-          <h1 className="text-2xl font-bold">Login to your account</h1>
+          <h1 className="text-2xl font-bold">Login To Hofwerks</h1>
         </div>
 
         <form.Field name="email">
@@ -77,7 +89,7 @@ export function LoginForm({
                   name={field.name}
                   onBlur={field.handleBlur}
                   onChange={(event) => {
-                    field.handleChange(event.target.value)
+                    field.handleChange(normalizeEmail(event.target.value))
                   }}
                   placeholder="m@example.com"
                   required
@@ -103,22 +115,39 @@ export function LoginForm({
                   Forgot your password?
                 </a>
               </div>
-              <InputGroup>
-                <InputGroupAddon>
-                  <Lock className="size-4" />
-                </InputGroupAddon>
-                <InputGroupInput
+                <InputGroup>
+                  <InputGroupAddon>
+                    <Lock className="size-4" />
+                  </InputGroupAddon>
+                  <InputGroupInput
                   id={field.name}
                   name={field.name}
                   onBlur={field.handleBlur}
-                  onChange={(event) => {
-                    field.handleChange(event.target.value)
-                  }}
-                  required
-                  type="password"
-                  value={field.state.value}
-                />
-              </InputGroup>
+                    onChange={(event) => {
+                      field.handleChange(event.target.value)
+                    }}
+                    required
+                    type={isPasswordVisible ? "text" : "password"}
+                    value={field.state.value}
+                  />
+                  <InputGroupAddon align="inline-end">
+                    <InputGroupButton
+                      aria-label={isPasswordVisible ? "Hide password" : "Show password"}
+                      onClick={() => {
+                        setIsPasswordVisible((previous) => !previous)
+                      }}
+                      size="icon-sm"
+                      type="button"
+                      variant="ghost"
+                    >
+                      {isPasswordVisible ? (
+                        <EyeSlash className="size-4" />
+                      ) : (
+                        <Eye className="size-4" />
+                      )}
+                    </InputGroupButton>
+                  </InputGroupAddon>
+                </InputGroup>
               {field.state.meta.errors.map((error) => (
                 <p className="text-sm text-rose-400" key={error?.message}>
                   {error?.message}
@@ -138,7 +167,11 @@ export function LoginForm({
           )}
         </form.Subscribe>
 
-        <FieldSeparator>Or continue with</FieldSeparator>
+        <div className="-my-1 flex items-center gap-3">
+          <div className="h-px flex-1 bg-white/20" />
+          <span className="text-muted-foreground text-xs">Or continue with</span>
+          <div className="h-px flex-1 bg-white/20" />
+        </div>
         <Field>
           <Button variant="outline" type="button">
             <GoogleLogo className="size-4" weight="regular" />
@@ -146,9 +179,15 @@ export function LoginForm({
           </Button>
           <FieldDescription className="text-center">
             Don&apos;t have an account?{" "}
-            <Link className="underline underline-offset-4" to="/signup">
+            <button
+              className="underline underline-offset-4"
+              onClick={() => {
+                onSwitchToSignUp?.()
+              }}
+              type="button"
+            >
               Sign up
-            </Link>
+            </button>
           </FieldDescription>
         </Field>
       </FieldGroup>

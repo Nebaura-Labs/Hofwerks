@@ -4,6 +4,7 @@ Hofwerkz is a modern BMW datalogging and diagnostics suite focused on enthusiast
 
 This repository contains:
 - A native desktop app (Tauri + Rust + React) for cable-based logging and diagnostics workflows
+- A native mobile app (Tauri + Rust + React) targeting iOS
 - A web app (TanStack Start) for account, dashboard, and log visualization
 - Shared packages for auth, API, env, and data infrastructure
 
@@ -43,7 +44,8 @@ Planned or in progress:
 hofwerkz/
 ├── apps/
 │   ├── web/                 # Web dashboard (TanStack Start + React)
-│   └── native/              # Desktop app (Tauri + React + Rust)
+│   ├── native/              # Desktop app (Tauri + React + Rust)
+│   └── mobile/              # iOS app (Tauri + React + Rust)
 ├── packages/
 │   ├── api/                 # oRPC procedures + shared API utilities
 │   ├── auth/                # Better Auth + Convex proxy integration
@@ -61,6 +63,7 @@ hofwerkz/
 - Runtime/package manager: Bun
 - Monorepo orchestration: Turborepo
 - Native app: Tauri 2 + Rust + React + Vite
+- Mobile app: Tauri 2 + Rust + React + Vite (iOS target)
 - Web app: TanStack Start + React + Vite
 - Auth: Better Auth + Convex integration
 - API layer: oRPC
@@ -109,6 +112,9 @@ Root scripts:
 - `bun run dev:native`  
   Starts only native (Tauri) dev task.
 
+- `bun run dev:mobile`  
+  Starts only mobile (Tauri) dev task.
+
 - `bun run build`  
   Runs monorepo builds through turbo.
 
@@ -123,6 +129,18 @@ Root scripts:
 
 - `bun run clean:native`  
   Cleans native Rust build artifacts (`cargo clean`) to reclaim disk space.
+
+- `bun run clean:mobile`  
+  Cleans mobile Rust build artifacts (`cargo clean`) to reclaim disk space.
+
+- `bun run mobile:ios:init`  
+  Initializes iOS project files for `apps/mobile`.
+
+- `bun run mobile:ios:dev`  
+  Runs the mobile app on iOS in dev mode.
+
+- `bun run mobile:ios:build`  
+  Builds the mobile app for iOS.
 
 Convex scripts:
 

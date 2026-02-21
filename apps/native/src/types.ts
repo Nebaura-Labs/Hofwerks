@@ -8,6 +8,7 @@ export type SerialPortInfo = {
 export type FeatureScreen =
   | "home"
   | "datalogging"
+  | "datalog-viewer"
   | "read-codes"
   | "flash-tune"
   | "gauges";

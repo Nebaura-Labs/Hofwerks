@@ -37,7 +37,7 @@ export const AppTopCards = ({
                 <Logo className="h-12 w-12" />
               </div>
               <div>
-                <h1 className="text-3xl font-semibold tracking-tight text-white">Hofworks</h1>
+                <h1 className="text-3xl font-semibold tracking-tight text-white">Hofwerks</h1>
                 <p className="text-sm text-white/60">BMW Tool Suite</p>
               </div>
             </div>

@@ -1,431 +1,441 @@
-import { Activity, Plug } from "lucide-react";
-import { AppTopCards } from "../components/app-top-cards";
+import { Gauge, Pulse, Scan, Wrench } from "@phosphor-icons/react";
+import { useState } from "react";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "../components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Checkbox } from "../components/ui/checkbox";
 import { Label } from "../components/ui/label";
-import type {
-	ConnectionMode,
-	DmeProfile,
-	LoggingParameter,
-	SerialPortInfo,
-} from "../types";
+import type { ConnectionMode, DmeProfile, LoggingParameter, SerialPortInfo } from "../types";
+
+type ParameterViewMode = "all" | "simple" | "advanced" | "selected";
 
 type DataloggingScreenProps = {
-	connectionMode: ConnectionMode;
-	selectedDme: DmeProfile;
-	selectedPort: string | null;
-	isVehicleConnected: boolean;
-	availablePorts: SerialPortInfo[];
-	availableParameters: LoggingParameter[];
-	selectedParameterKeys: string[];
-	serialPorts: SerialPortInfo[];
-	isLoading: boolean;
-	errorMessage: string | null;
-	onBack: () => void;
-	onConnectionModeChange: (mode: ConnectionMode) => void;
-	onDmeChange: (dme: DmeProfile) => void;
-	onPortSelect: (portName: string) => void;
-	onConnect: () => void;
-	onDisconnect: () => void;
-	onStartLogging: () => void;
-	onStopLogging: () => void;
-	onToggleParameter: (parameterKey: string) => void;
-	onRefresh: () => void;
-	dmeProfiles: DmeProfile[];
-	userName: string;
-	currentPlan: string;
-	softwareVersion: string;
-	isLogging: boolean;
-	totalBytesLogged: number;
-	logLines: string[];
-	latestDecodedValues: Record<string, number>;
-	lastDecodedTimestamp: number | null;
-	protocolMode: string;
-	recordedSampleCount: number;
-	onExportCsv: () => void;
-	elmSupportedParameterKeys: Set<string>;
+  connectionMode: ConnectionMode;
+  selectedDme: DmeProfile;
+  selectedPort: string | null;
+  isVehicleConnected: boolean;
+  availablePorts: SerialPortInfo[];
+  availableParameters: LoggingParameter[];
+  selectedParameterKeys: string[];
+  serialPorts: SerialPortInfo[];
+  isLoading: boolean;
+  errorMessage: string | null;
+  onBack: () => void;
+  onConnectionModeChange: (mode: ConnectionMode) => void;
+  onDmeChange: (dme: DmeProfile) => void;
+  onPortSelect: (portName: string) => void;
+  onConnect: () => void;
+  onDisconnect: () => void;
+  onStartLogging: () => void;
+  onStopLogging: () => void;
+  onToggleParameter: (parameterKey: string) => void;
+  onRefresh: () => void;
+  dmeProfiles: DmeProfile[];
+  userName: string;
+  currentPlan: string;
+  softwareVersion: string;
+  isLogging: boolean;
+  totalBytesLogged: number;
+  logLines: string[];
+  latestDecodedValues: Record<string, number>;
+  lastDecodedTimestamp: number | null;
+  protocolMode: string;
+  recordedSampleCount: number;
+  isSavingLog: boolean;
+  onSaveLog: () => void;
+  onExportCsv: () => void;
+};
+
+const sessionStatusLabel = (isLogging: boolean, isVehicleConnected: boolean): string => {
+  if (isLogging) {
+    return "Logging";
+  }
+
+  if (isVehicleConnected) {
+    return "Connected";
+  }
+
+  return "Waiting";
+};
+
+const protocolModeLabel = (protocolMode: string): string => {
+  switch (protocolMode) {
+    case "elm_obd":
+      return "ELM decoded";
+    case "elm+bmw":
+      return "ELM + BMW";
+    case "raw_fallback":
+      return "Raw fallback";
+    case "elm_initializing":
+      return "Initializing";
+    case "starting":
+      return "Starting";
+    default:
+      return "Stopped";
+  }
+};
+
+const SUGGESTED_PARAMETER_KEYS = new Set<string>([
+  "time-ms",
+  "engine-rpm",
+  "throttle-position",
+  "boost-actual",
+  "map-kpa",
+  "maf",
+  "fuel-trim-stft-b1",
+  "fuel-trim-ltft-b1",
+  "fuel-trim-stft-b2",
+  "fuel-trim-ltft-b2",
+  "lpfp-pressure",
+  "hpfp-pressure",
+  "rail-pressure",
+  "timing-avg",
+  "iat",
+  "coolant-temp",
+  "vehicle-speed",
+]);
+
+const getParameterComplexityTag = (key: string): "Simple" | "Advanced" => {
+  return SUGGESTED_PARAMETER_KEYS.has(key) ? "Simple" : "Advanced";
 };
 
 export const DataloggingScreen = ({
-	connectionMode,
-	selectedDme,
-	selectedPort,
-	isVehicleConnected,
-	availablePorts,
-	availableParameters,
-	selectedParameterKeys,
-	serialPorts,
-	isLoading,
-	errorMessage,
-	onBack,
-	onConnectionModeChange,
-	onDmeChange,
-	onPortSelect,
-	onConnect,
-	onDisconnect,
-	onStartLogging,
-	onStopLogging,
-	onToggleParameter,
-	onRefresh,
-	dmeProfiles,
-	userName,
-	currentPlan,
-	softwareVersion,
-	isLogging,
-	totalBytesLogged,
-	logLines,
-	latestDecodedValues,
-	lastDecodedTimestamp,
-	protocolMode,
-	recordedSampleCount,
-	onExportCsv,
-	elmSupportedParameterKeys,
+  selectedDme,
+  isVehicleConnected,
+  availableParameters,
+  selectedParameterKeys,
+  onBack,
+  onStartLogging,
+  onStopLogging,
+  onToggleParameter,
+  isLogging,
+  logLines,
+  latestDecodedValues,
+  lastDecodedTimestamp,
+  protocolMode,
+  recordedSampleCount,
+  isSavingLog,
+  onSaveLog,
+  onExportCsv,
 }: DataloggingScreenProps) => {
-	let sessionStatus = "Idle";
-	if (isLogging) {
-		sessionStatus = "Logging";
-	} else if (isVehicleConnected) {
-		sessionStatus = "Connected";
-	}
+  const status = sessionStatusLabel(isLogging, isVehicleConnected);
+  const protocol = protocolModeLabel(protocolMode);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [parameterViewMode, setParameterViewMode] = useState<ParameterViewMode>("all");
+  const availableParameterKeys = availableParameters.map((parameter) => parameter.key);
+  const selectedAvailableKeys = selectedParameterKeys.filter((key) =>
+    availableParameterKeys.includes(key),
+  );
+  const applySelection = (targetKeys: string[]): void => {
+    const availableSet = new Set(availableParameterKeys);
+    const targetSet = new Set(targetKeys.filter((key) => availableSet.has(key)));
+    const selectedSet = new Set(selectedAvailableKeys);
 
-	const protocolModeLabel = (() => {
-		switch (protocolMode) {
-			case "elm_obd":
-				return "ELM decoded";
-			case "elm+bmw":
-				return "ELM + BMW";
-			case "raw_fallback":
-				return "Raw fallback";
-			case "simulator":
-				return "Simulator";
-			case "elm_initializing":
-				return "Initializing adapter";
-			case "starting":
-				return "Starting";
-			default:
-				return "Stopped";
-		}
-	})();
+    for (const key of availableParameterKeys) {
+      const isSelected = selectedSet.has(key);
+      const shouldSelect = targetSet.has(key);
+      if (isSelected !== shouldSelect) {
+        onToggleParameter(key);
+      }
+    }
+  };
 
-	return (
-		<div className="space-y-6">
-			<AppTopCards
-				currentPlan={currentPlan}
-				isSerialPortsLoading={isLoading}
-				isVehicleConnected={isVehicleConnected}
-				softwareVersion={softwareVersion}
-				userName={userName}
-			/>
-			<div className="space-y-3">
-				<Button onClick={onBack} type="button" variant="outline">
-					Back
-				</Button>
-				<h1 className="font-semibold text-3xl tracking-tight">Datalogging</h1>
-				<p className="text-muted-foreground text-sm">
-					Select a detected cable port to begin live logging sessions.
-				</p>
-			</div>
+  const visibleParameters = availableParameters.filter((parameter) => {
+    if (parameterViewMode === "all") {
+      return true;
+    }
 
-			<Card className="border border-white/20 bg-black/30 backdrop-blur-sm">
-				<CardContent className="flex items-center justify-between py-4">
-					<div className="flex items-center gap-2">
-						<Activity className="size-4 text-muted-foreground" />
-						<span className="text-sm">Session status</span>
-					</div>
-					<Badge variant={isLogging ? "default" : "outline"}>
-						{sessionStatus}
-					</Badge>
-				</CardContent>
-			</Card>
+    if (parameterViewMode === "simple") {
+      return SUGGESTED_PARAMETER_KEYS.has(parameter.key);
+    }
 
-			<Card className="border border-white/20 bg-black/30 text-left backdrop-blur-sm">
-				<CardHeader>
-					<div className="flex items-center gap-2">
-						<Plug className="size-4 text-muted-foreground" />
-						<CardTitle className="text-base">Connection Setup</CardTitle>
-					</div>
-					<CardDescription>
-						Choose mode, DME profile, and source port before starting logging.
-					</CardDescription>
-				</CardHeader>
-				<CardContent className="space-y-4">
-					<div className="space-y-2">
-						<Label>Mode</Label>
-						<div className="flex flex-wrap gap-2">
-							<Button
-								onClick={() => {
-									onConnectionModeChange("simulator");
-								}}
-								type="button"
-								variant={connectionMode === "simulator" ? "default" : "outline"}
-							>
-								Simulator
-							</Button>
-							<Button
-								onClick={() => {
-									onConnectionModeChange("hardware");
-								}}
-								type="button"
-								variant={connectionMode === "hardware" ? "default" : "outline"}
-							>
-								Hardware
-							</Button>
-						</div>
-					</div>
+    if (parameterViewMode === "selected") {
+      return selectedAvailableKeys.includes(parameter.key);
+    }
 
-					<div className="space-y-2">
-						<Label>DME Profile</Label>
-						<div className="flex flex-wrap gap-2">
-							{dmeProfiles.map((dme) => (
-								<Button
-									key={dme}
-									onClick={() => {
-										onDmeChange(dme);
-									}}
-									type="button"
-									variant={selectedDme === dme ? "default" : "outline"}
-								>
-									{dme}
-								</Button>
-							))}
-						</div>
-						<p className="text-muted-foreground text-xs">
-							Parameter availability is DME-specific, not universal.
-						</p>
-					</div>
+    return !SUGGESTED_PARAMETER_KEYS.has(parameter.key);
+  });
 
-					<div className="flex flex-wrap items-center gap-2">
-						<Button onClick={onRefresh} type="button" variant="outline">
-							Scan Cables
-						</Button>
-						{isVehicleConnected ? (
-							<Button
-								onClick={onDisconnect}
-								type="button"
-								variant="destructive"
-							>
-								Disconnect
-							</Button>
-						) : (
-							<Button
-								disabled={selectedPort === null}
-								onClick={onConnect}
-								type="button"
-							>
-								Connect
-							</Button>
-						)}
-						{isLogging ? (
-							<Button
-								onClick={onStopLogging}
-								type="button"
-								variant="destructive"
-							>
-								Stop Logging
-							</Button>
-						) : (
-							<Button
-								disabled={
-									!isVehicleConnected || selectedParameterKeys.length === 0
-								}
-								onClick={onStartLogging}
-								type="button"
-							>
-								Start Logging
-							</Button>
-						)}
-						<Button
-							disabled={recordedSampleCount === 0}
-							onClick={onExportCsv}
-							type="button"
-							variant="outline"
-						>
-							Export CSV
-						</Button>
-					</div>
+  return (
+    <div className="space-y-6">
+      <div className="space-y-3">
+        <Button onClick={onBack} type="button" variant="outline">
+          Back
+        </Button>
+        <h1 className="font-semibold text-3xl tracking-tight">Datalogging</h1>
+        <p className="text-muted-foreground text-sm">Live BMW data.</p>
+      </div>
 
-					<div className="flex items-center gap-2 text-sm">
-						<Badge variant={isVehicleConnected ? "secondary" : "outline"}>
-							{isVehicleConnected ? "Connected" : "Disconnected"}
-						</Badge>
-						<span className="text-muted-foreground">
-							{selectedPort ?? "No port selected"}
-						</span>
-						<span className="text-muted-foreground">
-							Bytes: {totalBytesLogged.toLocaleString()}
-						</span>
-						<span className="text-muted-foreground">
-							Samples: {recordedSampleCount.toLocaleString()}
-						</span>
-						<Badge variant="outline">{protocolModeLabel}</Badge>
-					</div>
+      <Card className="border border-white/12 bg-black/18 shadow-[0_10px_30px_rgba(0,0,0,0.2)] backdrop-blur-2xl">
+        <CardHeader className="space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <CardTitle>Session Snapshot</CardTitle>
+            <Badge variant={isLogging ? "default" : "outline"}>{status}</Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="grid grid-cols-2 gap-2.5 text-sm">
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+            <p className="text-white/60 text-xs">Vehicle</p>
+            <p className="text-white/90">2011 BMW 335i</p>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+            <p className="text-white/60 text-xs">DME</p>
+            <p className="text-white/90">{selectedDme}</p>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+            <p className="text-white/60 text-xs">Connection</p>
+            <p className={isVehicleConnected ? "text-primary" : "text-red-400"}>
+              {isVehicleConnected ? "Connected" : "Disconnected"}
+            </p>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+            <p className="text-white/60 text-xs">Parameters</p>
+            <p className="text-white/90">{selectedParameterKeys.length} selected</p>
+          </div>
+        </CardContent>
+      </Card>
 
-					<div className="space-y-2">
-						<Label>Available Ports</Label>
-						{availablePorts.length > 0 && (
-							<ul className="space-y-2">
-								{availablePorts.map((port) => (
-									<li
-										className={`flex items-center justify-between rounded-md border border-white/15 bg-white/5 px-3 py-2 text-sm ${
-											selectedPort === port.port_name
-												? "border-primary ring-1 ring-ring"
-												: ""
-										}`}
-										key={`${port.port_name}-${port.port_type}`}
-									>
-										<div>
-											<div className="font-medium">{port.port_name}</div>
-											<div className="text-muted-foreground text-xs">
-												{port.port_type}
-											</div>
-										</div>
-										<Button
-											onClick={() => {
-												onPortSelect(port.port_name);
-											}}
-											size="sm"
-											type="button"
-											variant={
-												selectedPort === port.port_name
-													? "secondary"
-													: "outline"
-											}
-										>
-											{selectedPort === port.port_name ? "Selected" : "Select"}
-										</Button>
-									</li>
-								))}
-							</ul>
-						)}
-					</div>
+      <Card className="border border-white/12 bg-black/18 shadow-[0_10px_30px_rgba(0,0,0,0.2)] backdrop-blur-2xl">
+        <CardHeader className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Pulse className="h-4 w-4 text-primary" weight="bold" />
+            <CardTitle>Logging Controls</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-1 gap-2">
+            {isLogging ? (
+              <Button onClick={onStopLogging} type="button" variant="destructive">
+                Stop Logging
+              </Button>
+            ) : (
+              <Button
+                disabled={!isVehicleConnected || selectedParameterKeys.length === 0}
+                onClick={onStartLogging}
+                type="button"
+              >
+                Start Logging
+              </Button>
+            )}
+            <Button
+              disabled={recordedSampleCount === 0}
+              onClick={onExportCsv}
+              type="button"
+              variant="outline"
+            >
+              Export CSV
+            </Button>
+            <Button
+              disabled={isLogging || recordedSampleCount === 0 || isSavingLog}
+              onClick={onSaveLog}
+              type="button"
+              variant="secondary"
+            >
+              {isSavingLog ? "Saving..." : "Save Log"}
+            </Button>
+          </div>
 
-					{isLoading && (
-						<p className="text-muted-foreground text-sm">
-							Scanning serial ports...
-						</p>
-					)}
-					{errorMessage !== null && (
-						<p className="text-rose-300 text-sm">{errorMessage}</p>
-					)}
-					{!isLoading && errorMessage === null && serialPorts.length === 0 && (
-						<p className="text-muted-foreground text-sm">
-							No serial ports found.
-						</p>
-					)}
-				</CardContent>
-			</Card>
+          <div className="flex flex-wrap gap-2">
+            <Badge variant={isVehicleConnected ? "secondary" : "outline"}>
+              {isVehicleConnected ? "Connected" : "Disconnected"}
+            </Badge>
+            <Badge variant="outline">{protocol}</Badge>
+            <Badge variant="outline">Parameters: {selectedParameterKeys.length}</Badge>
+          </div>
 
-			<Card className="border border-white/20 bg-black/30 text-left backdrop-blur-sm">
-				<CardHeader>
-					<CardTitle className="text-base">Live Parameters</CardTitle>
-					<CardDescription>
-						Latest parsed values from active polling ({protocolModeLabel}).
-					</CardDescription>
-				</CardHeader>
-				<CardContent>
-					{Object.keys(latestDecodedValues).length === 0 ? (
-						<p className="text-muted-foreground text-sm">
-							No decoded channels yet.
-						</p>
-					) : (
-						<div className="space-y-3">
-							<div className="grid gap-2 md:grid-cols-2">
-								{Object.entries(latestDecodedValues).map(([key, value]) => (
-									<div
-										className="flex items-center justify-between rounded-md border border-white/15 bg-white/5 px-3 py-2"
-										key={key}
-									>
-										<span className="text-muted-foreground text-xs uppercase">
-											{key}
-										</span>
-										<span className="font-medium text-sm">{value.toFixed(3)}</span>
-									</div>
-								))}
-							</div>
-							{lastDecodedTimestamp !== null && (
-								<p className="text-muted-foreground text-xs">
-									Last sample: {new Date(lastDecodedTimestamp).toLocaleTimeString()}
-								</p>
-							)}
-						</div>
-					)}
-				</CardContent>
-			</Card>
+          <Button
+            className="w-full"
+            onClick={() => {
+              setShowAdvanced((previous) => !previous);
+            }}
+            type="button"
+            variant="outline"
+          >
+            {showAdvanced ? "Hide Advanced" : "Show Advanced"}
+          </Button>
+        </CardContent>
+      </Card>
 
-			<Card className="border border-white/20 bg-black/30 text-left backdrop-blur-sm">
-				<CardHeader>
-					<CardTitle className="text-base">Parameter Selection</CardTitle>
-					<CardDescription>
-						Choose which channels to log for {selectedDme}. Selected:{" "}
-						{selectedParameterKeys.length}
-					</CardDescription>
-				</CardHeader>
-				<CardContent>
-					<div className="grid gap-3 md:grid-cols-2">
-						{availableParameters.map((parameter) => {
-							const isChecked = selectedParameterKeys.includes(parameter.key);
-							return (
-								<div
-									className="flex items-start gap-3 rounded-md border border-white/15 bg-white/5 p-3"
-									key={parameter.key}
-								>
-									<Checkbox
-										checked={isChecked}
-										id={parameter.key}
-										onCheckedChange={() => {
-											onToggleParameter(parameter.key);
-										}}
-									/>
-									<div className="space-y-1">
-										<Label className="font-medium" htmlFor={parameter.key}>
-											<span>{parameter.label} ({parameter.unit})</span>
-											{elmSupportedParameterKeys.has(parameter.key) ? (
-												<Badge className="ml-2" variant="outline">ELM</Badge>
-											) : (
-												<Badge className="ml-2" variant="outline">
-													BMW-specific
-												</Badge>
-											)}
-										</Label>
-										<p className="text-muted-foreground text-xs">
-											{parameter.description}
-										</p>
-									</div>
-								</div>
-							);
-						})}
-					</div>
-				</CardContent>
-			</Card>
+      <Card className="border border-white/12 bg-black/18 shadow-[0_10px_30px_rgba(0,0,0,0.2)] backdrop-blur-2xl">
+        <CardHeader className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Wrench className="h-4 w-4 text-primary" weight="bold" />
+            <CardTitle>Parameter Selection</CardTitle>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="inline-flex rounded-xl border border-white/12 bg-white/[0.03] p-1">
+              <Button
+                className="h-8 rounded-lg px-3 text-xs"
+                onClick={() => {
+                  setParameterViewMode("all");
+                }}
+                type="button"
+                variant={parameterViewMode === "all" ? "default" : "ghost"}
+              >
+                All
+              </Button>
+              <Button
+                className="h-8 rounded-lg px-3 text-xs"
+                onClick={() => {
+                  setParameterViewMode("simple");
+                }}
+                type="button"
+                variant={parameterViewMode === "simple" ? "default" : "ghost"}
+              >
+                Simple
+              </Button>
+              <Button
+                className="h-8 rounded-lg px-3 text-xs"
+                onClick={() => {
+                  setParameterViewMode("advanced");
+                }}
+                type="button"
+                variant={parameterViewMode === "advanced" ? "default" : "ghost"}
+              >
+                Advanced
+              </Button>
+              <Button
+                className="h-8 rounded-lg px-3 text-xs"
+                onClick={() => {
+                  setParameterViewMode("selected");
+                }}
+                type="button"
+                variant={parameterViewMode === "selected" ? "default" : "ghost"}
+              >
+                Selected
+              </Button>
+            </div>
+            <Badge variant="outline">{visibleParameters.length} shown</Badge>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              className="h-8 rounded-lg px-3 text-xs"
+              onClick={() => {
+                applySelection(availableParameterKeys);
+              }}
+              type="button"
+              variant="secondary"
+            >
+              Select All
+            </Button>
+            <Button
+              className="h-8 rounded-lg px-3 text-xs"
+              onClick={() => {
+                applySelection([]);
+              }}
+              type="button"
+              variant="outline"
+            >
+              Deselect All
+            </Button>
+            <Button
+              className="h-8 rounded-lg px-3 text-xs"
+              onClick={() => {
+                applySelection(
+                  availableParameters
+                    .filter((parameter) => SUGGESTED_PARAMETER_KEYS.has(parameter.key))
+                    .map((parameter) => parameter.key),
+                );
+              }}
+              type="button"
+              variant="default"
+            >
+              Suggested
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3">
+            {visibleParameters.map((parameter) => {
+              const isChecked = selectedParameterKeys.includes(parameter.key);
+              const complexityTag = getParameterComplexityTag(parameter.key);
+              return (
+                <div
+                  className="relative flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3"
+                  key={parameter.key}
+                >
+                  <Badge
+                    className={
+                      complexityTag === "Advanced"
+                        ? "absolute right-2 top-2 h-5 rounded-md border-amber-400/60 bg-amber-500/15 px-2 text-[10px] text-amber-200"
+                        : "absolute right-2 top-2 h-5 rounded-md px-2 text-[10px]"
+                    }
+                    variant="outline"
+                  >
+                    {complexityTag}
+                  </Badge>
+                  <Checkbox
+                    checked={isChecked}
+                    id={parameter.key}
+                    onCheckedChange={() => {
+                      onToggleParameter(parameter.key);
+                    }}
+                  />
+                  <div className="min-w-0 space-y-1 pr-16">
+                    <Label className="font-medium text-white/90" htmlFor={parameter.key}>
+                      {parameter.label} ({parameter.unit})
+                    </Label>
+                    <p className="text-white/60 text-xs">{parameter.description}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
 
-			<Card className="border border-white/20 bg-black/30 text-left backdrop-blur-sm">
-				<CardHeader>
-					<CardTitle className="text-base">Live Log Stream</CardTitle>
-					<CardDescription>
-						Raw incoming frames from the selected source. Use this to validate
-						cable traffic.
-					</CardDescription>
-				</CardHeader>
-				<CardContent>
-					<div className="max-h-64 overflow-y-auto rounded-md border border-white/15 bg-black/40 p-3 font-mono text-xs leading-5">
-						{logLines.length === 0 ? (
-							<p className="text-muted-foreground">
-								No frames yet. Start a logging session.
-							</p>
-						) : (
-							<pre className="whitespace-pre-wrap">{logLines.join("\n")}</pre>
-						)}
-					</div>
-				</CardContent>
-			</Card>
-		</div>
-	);
+      <Card className="border border-white/12 bg-black/18 shadow-[0_10px_30px_rgba(0,0,0,0.2)] backdrop-blur-2xl">
+        <CardHeader className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Gauge className="h-4 w-4 text-primary" weight="bold" />
+            <CardTitle>Live Values</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {Object.keys(latestDecodedValues).length === 0 ? (
+            <p className="text-sm text-white/65">No decoded channels yet.</p>
+          ) : (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                {Object.entries(latestDecodedValues).map(([key, value]) => (
+                  <div
+                    className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2"
+                    key={key}
+                  >
+                    <p className="truncate text-white/60 text-xs uppercase">{key}</p>
+                    <p className="font-medium text-sm text-white/90">{value.toFixed(3)}</p>
+                  </div>
+                ))}
+              </div>
+              {lastDecodedTimestamp !== null && (
+                <p className="text-white/60 text-xs">
+                  Last sample: {new Date(lastDecodedTimestamp).toLocaleTimeString()}
+                </p>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {showAdvanced && (
+        <Card className="border border-white/12 bg-black/18 shadow-[0_10px_30px_rgba(0,0,0,0.2)] backdrop-blur-2xl">
+          <CardHeader className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Scan className="h-4 w-4 text-primary" weight="bold" />
+              <CardTitle>Live Log Stream</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="max-h-64 overflow-y-auto rounded-xl border border-white/10 bg-black/35 p-3 font-mono text-xs leading-5 text-white/85">
+              {logLines.length === 0 ? (
+                <p className="text-white/60">No frames yet. Start a logging session.</p>
+              ) : (
+                <pre className="whitespace-pre-wrap">{logLines.join("\n")}</pre>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
 };

@@ -1,8 +1,8 @@
-import { EnvelopeSimple, GoogleLogo, Lock, User } from "@phosphor-icons/react"
+import { Eye, EyeSlash, EnvelopeSimple, GoogleLogo, Lock, User } from "@phosphor-icons/react"
 import { useForm } from "@tanstack/react-form"
-import { Link } from "react-router-dom"
+import { useState } from "react"
 import { toast } from "sonner"
-import z from "zod"
+import { z } from "zod"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -11,11 +11,11 @@ import {
   FieldDescription,
   FieldGroup,
   FieldLabel,
-  FieldSeparator,
 } from "@/components/ui/field"
 import {
   InputGroup,
   InputGroupAddon,
+  InputGroupButton,
   InputGroupInput,
 } from "@/components/ui/input-group"
 
@@ -25,13 +25,19 @@ type SignUpFormProps = Omit<React.ComponentProps<"form">, "onSubmit"> & {
     email: string
     password: string
   }) => Promise<void>
+  onSwitchToLogin?: () => void
 }
 
 export function SignUpForm({
   className,
   onSubmitCredentials,
+  onSwitchToLogin,
   ...props
 }: SignUpFormProps) {
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false)
+  const normalizeEmail = (value: string): string =>
+    value.trim().toLowerCase().replaceAll(" ", "")
+
   const form = useForm({
     defaultValues: {
       name: "",
@@ -42,7 +48,7 @@ export function SignUpForm({
       try {
         await onSubmitCredentials({
           name: value.name,
-          email: value.email,
+          email: normalizeEmail(value.email),
           password: value.password,
         })
       } catch (error) {
@@ -51,9 +57,15 @@ export function SignUpForm({
     },
     validators: {
       onSubmit: z.object({
-        name: z.string().min(2, "Name must be at least 2 characters"),
-        email: z.email("Invalid email address"),
-        password: z.string().min(8, "Password must be at least 8 characters"),
+        name: z.string().trim().min(2, "Name must be at least 2 characters"),
+        email: z
+          .string()
+          .min(1, "Email is required")
+          .email("Please enter a valid email address"),
+        password: z
+          .string()
+          .trim()
+          .min(8, "Password must be at least 8 characters"),
       }),
     },
   })
@@ -71,7 +83,7 @@ export function SignUpForm({
     >
       <FieldGroup>
         <div className="flex flex-col items-center gap-1 text-center">
-          <h1 className="text-2xl font-bold">Create your account</h1>
+          <h1 className="text-2xl font-bold">Signup For Hofwerks</h1>
         </div>
 
         <form.Field name="name">
@@ -117,7 +129,7 @@ export function SignUpForm({
                   name={field.name}
                   onBlur={field.handleBlur}
                   onChange={(event) => {
-                    field.handleChange(event.target.value)
+                    field.handleChange(normalizeEmail(event.target.value))
                   }}
                   placeholder="m@example.com"
                   required
@@ -150,9 +162,26 @@ export function SignUpForm({
                     field.handleChange(event.target.value)
                   }}
                   required
-                  type="password"
+                  type={isPasswordVisible ? "text" : "password"}
                   value={field.state.value}
                 />
+                <InputGroupAddon align="inline-end">
+                  <InputGroupButton
+                    aria-label={isPasswordVisible ? "Hide password" : "Show password"}
+                    onClick={() => {
+                      setIsPasswordVisible((previous) => !previous)
+                    }}
+                    size="icon-sm"
+                    type="button"
+                    variant="ghost"
+                  >
+                    {isPasswordVisible ? (
+                      <EyeSlash className="size-4" />
+                    ) : (
+                      <Eye className="size-4" />
+                    )}
+                  </InputGroupButton>
+                </InputGroupAddon>
               </InputGroup>
               {field.state.meta.errors.map((error) => (
                 <p className="text-sm text-rose-400" key={error?.message}>
@@ -173,7 +202,11 @@ export function SignUpForm({
           )}
         </form.Subscribe>
 
-        <FieldSeparator>Or continue with</FieldSeparator>
+        <div className="-my-1 flex items-center gap-3">
+          <div className="h-px flex-1 bg-white/20" />
+          <span className="text-muted-foreground text-xs">Or continue with</span>
+          <div className="h-px flex-1 bg-white/20" />
+        </div>
 
         <Field>
           <Button type="button" variant="outline">
@@ -182,9 +215,15 @@ export function SignUpForm({
           </Button>
           <FieldDescription className="text-center">
             Already have an account?{" "}
-            <Link className="underline underline-offset-4" to="/login">
+            <button
+              className="underline underline-offset-4"
+              onClick={() => {
+                onSwitchToLogin?.()
+              }}
+              type="button"
+            >
               Log in
-            </Link>
+            </button>
           </FieldDescription>
         </Field>
       </FieldGroup>
