@@ -5,5 +5,5 @@ type LogoProps = {
 };
 
 export const Logo = ({ className }: LogoProps) => {
-  return <img alt="Hofworks logo" className={className} height={96} src={logo} width={96} />;
+  return <img alt="Hofwerks logo" className={className} height={96} src={logo} width={96} />;
 };

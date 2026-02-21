@@ -102,7 +102,7 @@ function RouteComponent() {
 									</div>
 									<div>
 										<h1 className="font-semibold text-3xl text-white tracking-tight">
-											Hofworks
+											Hofwerks
 										</h1>
 										<p className="text-sm text-white/60">BMW Tool Suite</p>
 									</div>

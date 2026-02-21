@@ -1,12 +1,6 @@
-import { AppTopCards } from "../components/app-top-cards";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "../components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Progress } from "../components/ui/progress";
 import type { GaugeMetric } from "../types";
 
@@ -40,32 +34,22 @@ const clamp = (value: number, min: number, max: number): number => {
   return Math.min(max, Math.max(min, value));
 };
 
-export const GaugesScreen = ({
-  metrics,
-  onRefresh,
-  onBack,
-  userName,
-  currentPlan,
-  softwareVersion,
-  isVehicleConnected,
-}: GaugesScreenProps) => {
+export const GaugesScreen = ({ metrics, onRefresh, onBack, isVehicleConnected }: GaugesScreenProps) => {
   return (
     <div className="space-y-6">
-      <AppTopCards
-        currentPlan={currentPlan}
-        isSerialPortsLoading={false}
-        isVehicleConnected={isVehicleConnected}
-        softwareVersion={softwareVersion}
-        userName={userName}
-      />
       <div className="space-y-3">
         <Button onClick={onBack} type="button" variant="outline">
           Back
         </Button>
-        <h1 className="text-3xl font-semibold tracking-tight">Gauges</h1>
+        <h1 className="font-semibold text-3xl tracking-tight">Gauges</h1>
         <p className="text-muted-foreground text-sm">
           Real-time gauge dashboard for boost, AFR, timing, and temperatures.
         </p>
+        <div className="flex items-center gap-2">
+          <Badge variant={isVehicleConnected ? "secondary" : "outline"}>
+            {isVehicleConnected ? "Connected" : "Disconnected"}
+          </Badge>
+        </div>
       </div>
 
       <div className="flex justify-start">
@@ -81,7 +65,10 @@ export const GaugesScreen = ({
           const status = gaugeStatus(metric.value, metric.warnLow, metric.warnHigh);
 
           return (
-            <Card className="border border-white/20 bg-black/30 backdrop-blur-sm" key={metric.key}>
+            <Card
+              className="border border-white/12 bg-black/18 shadow-[0_10px_30px_rgba(0,0,0,0.2)] backdrop-blur-2xl"
+              key={metric.key}
+            >
               <CardHeader>
                 <div className="flex items-center justify-between gap-2">
                   <CardTitle className="text-base">{metric.label}</CardTitle>
@@ -92,7 +79,7 @@ export const GaugesScreen = ({
               </CardHeader>
               <CardContent className="space-y-3">
                 <div
-                  className={`text-2xl font-semibold ${
+                  className={`font-semibold text-2xl ${
                     status === "warn" ? "text-rose-300" : "text-emerald-300"
                   }`}
                 >

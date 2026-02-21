@@ -187,16 +187,22 @@ fn initialize_elm_adapter(port: &mut dyn SerialPort) -> Result<(), String> {
 
 fn pid_for_key(key: &str) -> Option<&'static str> {
 	match key {
+		"time-ms" => None,
 		"engine-rpm" => Some("010C"),
 		"throttle-position" => Some("0111"),
+		"engine-load" => Some("0104"),
 		"coolant-temp" => Some("0105"),
 		"iat" => Some("010F"),
 		"vehicle-speed" => Some("010D"),
 		"timing-avg" => Some("010E"),
-		"boost-actual" | "boost-target" => Some("010B"),
+		"maf" => Some("0110"),
 		"afr-bank1" | "afr-bank2" => Some("0144"),
+		"fuel-trim-stft-b1" => Some("0106"),
+		"fuel-trim-ltft-b1" => Some("0107"),
+		"fuel-trim-stft-b2" => Some("0108"),
+		"fuel-trim-ltft-b2" => Some("0109"),
 		"oil-temp" => Some("015C"),
-		"fuel-pressure" => Some("010A"),
+		"fuel-level" => Some("012F"),
 		_ => None,
 	}
 }
@@ -217,22 +223,38 @@ fn find_pid_payload(bytes: &[u8], pid: u8) -> Option<&[u8]> {
 
 fn decode_pid_value(parameter_key: &str, payload: &[u8]) -> Option<f64> {
 	match parameter_key {
+		"time-ms" => None,
 		"engine-rpm" => payload
 			.get(0)
 			.zip(payload.get(1))
 			.map(|(a, b)| (((*a as u16) * 256 + *b as u16) as f64) / 4.0),
 		"throttle-position" => payload.get(0).map(|value| (*value as f64 * 100.0) / 255.0),
+		"engine-load" => payload.get(0).map(|value| (*value as f64 * 100.0) / 255.0),
 		"coolant-temp" | "iat" | "oil-temp" => payload.get(0).map(|value| *value as f64 - 40.0),
 		"vehicle-speed" => payload.get(0).map(|value| *value as f64),
 		"timing-avg" => payload.get(0).map(|value| *value as f64 / 2.0 - 64.0),
 		"boost-actual" | "boost-target" => payload
 			.get(0)
 			.map(|value| ((*value as f64) - 100.0) * 0.145_038),
+		"map-kpa" => payload.get(0).map(|value| *value as f64),
 		"afr-bank1" | "afr-bank2" => payload
 			.get(0)
 			.zip(payload.get(1))
 			.map(|(a, b)| (((*a as u16) * 256 + *b as u16) as f64) / 32_768.0),
-		"fuel-pressure" => payload.get(0).map(|value| *value as f64 * 3.0),
+		"maf" => payload
+			.get(0)
+			.zip(payload.get(1))
+			.map(|(a, b)| (((*a as u16) * 256 + *b as u16) as f64) / 100.0),
+		"fuel-trim-stft-b1"
+		| "fuel-trim-ltft-b1"
+		| "fuel-trim-stft-b2"
+		| "fuel-trim-ltft-b2" => payload.get(0).map(|value| ((*value as f64) - 128.0) * 100.0 / 128.0),
+		"lpfp-pressure" => payload.get(0).map(|value| *value as f64 * 3.0),
+		"rail-pressure" | "hpfp-pressure" => payload
+			.get(0)
+			.zip(payload.get(1))
+			.map(|(a, b)| (((*a as u16) * 256 + *b as u16) as f64) * 10.0),
+		"fuel-level" => payload.get(0).map(|value| (*value as f64) * 100.0 / 255.0),
 		_ => None,
 	}
 }
@@ -271,16 +293,24 @@ fn build_simulated_sample(parameter_keys: &[String], sample_index: u64) -> HashM
 	let mut values = HashMap::new();
 	for key in parameter_keys {
 		let value = match key.as_str() {
+			"time-ms" => Some((sample_index as f64) * 110.0),
 			"engine-rpm" => Some(rpm),
 			"throttle-position" => Some(throttle),
+			"engine-load" => Some((throttle * 0.82).clamp(0.0, 100.0)),
 			"coolant-temp" => Some(coolant),
 			"iat" => Some(iat),
 			"vehicle-speed" => Some(speed),
 			"timing-avg" => Some(timing),
 			"boost-actual" | "boost-target" => Some(boost),
+			"map-kpa" => Some(map_kpa),
 			"afr-bank1" | "afr-bank2" => Some(lambda),
+			"maf" => Some((rpm / 120.0) + (throttle / 4.5)),
+			"fuel-trim-stft-b1" | "fuel-trim-stft-b2" => Some(((sample_index % 20) as f64 - 10.0) * 0.3),
+			"fuel-trim-ltft-b1" | "fuel-trim-ltft-b2" => Some(((sample_index % 12) as f64 - 6.0) * 0.2),
 			"oil-temp" => Some(oil_temp),
-			"fuel-pressure" => Some(fuel_pressure),
+			"lpfp-pressure" => Some(fuel_pressure),
+			"rail-pressure" | "hpfp-pressure" => Some(11_500.0 + ((sample_index % 20) as f64 - 10.0) * 35.0),
+			"fuel-level" => Some(62.0),
 			_ => None,
 		};
 		if let Some(sample_value) = value {
@@ -330,7 +360,25 @@ fn request_bmw_channel_value(
 		return Ok(None);
 	}
 
-	let payload = bytes.as_slice();
+	let payload = if config.command.starts_with("22") && config.command.len() >= 6 {
+		let did_hi = u8::from_str_radix(&config.command[2..4], 16).ok();
+		let did_lo = u8::from_str_radix(&config.command[4..6], 16).ok();
+		if let (Some(hi), Some(lo)) = (did_hi, did_lo) {
+			let mut found_payload: Option<&[u8]> = None;
+			for index in 0..bytes.len().saturating_sub(2) {
+				if bytes[index] == 0x62 && bytes[index + 1] == hi && bytes[index + 2] == lo {
+					found_payload = Some(&bytes[index + 3..]);
+					break;
+				}
+			}
+			found_payload.unwrap_or(bytes.as_slice())
+		} else {
+			bytes.as_slice()
+		}
+	} else {
+		bytes.as_slice()
+	};
+
 	Ok(decode_from_config(payload, &config.decode))
 }
 
@@ -524,6 +572,7 @@ fn start_datalogging(
 			while !stop_clone.load(Ordering::Relaxed) {
 				let timestamp_ms = now_timestamp_ms();
 				let mut values = HashMap::new();
+				values.insert(String::from("time-ms"), timestamp_ms as f64);
 				let mut lines_to_push: Vec<String> = Vec::new();
 				let mut has_bmw_decoded_value = false;
 

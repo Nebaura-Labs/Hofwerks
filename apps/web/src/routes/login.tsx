@@ -24,8 +24,8 @@ function RouteComponent() {
             <div className="flex max-w-md flex-col items-center gap-6 text-center">
               <div className="flex flex-col items-center gap-3">
                 <Logo className="h-20 w-20" />
-                <p className="text-2xl font-semibold text-white">Hofworks</p>
-                <p className="text-base text-white/80">BMW diagnostics and tuning suite</p>
+                <p className="text-2xl font-semibold text-white">Hofwerks</p>
+                <p className="text-base text-white/80">The modern BMW toolkit</p>
               </div>
 
               <div className="w-full space-y-5 rounded-2xl border border-white/20 bg-black/30 p-6 shadow-lg backdrop-blur-sm">
