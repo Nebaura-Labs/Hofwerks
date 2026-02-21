@@ -48,3 +48,7 @@ coverage
 .cache
 tmp
 temp
+
+# Rust/Tauri build artifacts
+apps/native/src-tauri/target/
+apps/mobile/src-tauri/target/

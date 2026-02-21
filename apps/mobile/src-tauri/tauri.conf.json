@@ -1,0 +1,33 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Hofwerks Mobile",
+  "version": "0.1.0",
+  "identifier": "com.hofwerkz.mobile",
+  "build": {
+    "beforeDevCommand": "bun run dev:web",
+    "devUrl": "http://localhost:1422",
+    "beforeBuildCommand": "bun run build:web",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Hofwerks Mobile",
+        "width": 1200,
+        "height": 800,
+        "resizable": true,
+        "transparent": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": false,
+    "iOS": {
+      "developmentTeam": "TGFDAA44B7"
+    }
+  }
+}
